@@ -1,0 +1,179 @@
+{
+  "version": "1.0.0",
+  "message_format": {
+    "request": {
+      "id": "uuid",
+      "type": "command.type",
+      "payload": {}
+    },
+    "response": {
+      "id": "uuid",
+      "ok": true,
+      "data": {},
+      "error": null
+    },
+    "event": {
+      "type": "event.type",
+      "data": {}
+    }
+  },
+  "commands": {
+    "system.ping": {
+      "phase": 1,
+      "payload": {},
+      "response": { "pong": true, "timestamp": "iso8601" }
+    },
+    "system.info": {
+      "phase": 1,
+      "payload": {},
+      "response": { "hostname": "string", "os": "string", "screen": { "width": 0, "height": 0 } }
+    },
+    "mouse.move": {
+      "phase": 1,
+      "payload": { "x": "int", "y": "int" }
+    },
+    "mouse.click": {
+      "phase": 1,
+      "payload": { "x": "int", "y": "int", "button": "left|right|middle", "clicks": 1 }
+    },
+    "mouse.scroll": {
+      "phase": 1,
+      "payload": { "x": "int", "y": "int", "dx": 0, "dy": "int" }
+    },
+    "mouse.drag": {
+      "phase": 1,
+      "payload": { "x1": "int", "y1": "int", "x2": "int", "y2": "int", "button": "left" }
+    },
+    "keyboard.type": {
+      "phase": 1,
+      "payload": { "text": "string" }
+    },
+    "keyboard.key": {
+      "phase": 1,
+      "payload": { "key": "string", "action": "press|release|tap" }
+    },
+    "keyboard.hotkey": {
+      "phase": 1,
+      "payload": { "keys": ["ctrl", "c"] }
+    },
+    "screen.capture": {
+      "phase": 1,
+      "payload": { "quality": 70, "monitor": 0 },
+      "response": { "image": "base64_jpeg", "width": 0, "height": 0 }
+    },
+    "screen.stream": {
+      "phase": 4,
+      "payload": { "action": "start|stop", "fps": 10, "quality": 50 },
+      "event": { "image": "base64_jpeg", "width": 0, "height": 0 }
+    },
+    "shell.exec": {
+      "phase": 2,
+      "payload": { "command": "string", "shell": "powershell|cmd", "dangerous": false },
+      "response": { "exit_code": 0, "stdout": "string", "stderr": "string" },
+      "event": { "stream": "stdout|stderr", "data": "string" }
+    },
+    "file.list": {
+      "phase": 2,
+      "payload": { "path": "string" },
+      "response": { "entries": [{ "name": "string", "is_dir": true, "size": 0 }] }
+    },
+    "file.read": {
+      "phase": 2,
+      "payload": { "path": "string", "offset": 0, "length": 65536 },
+      "response": { "data": "base64", "size": 0 }
+    },
+    "file.write": {
+      "phase": 2,
+      "payload": { "path": "string", "data": "base64", "append": false }
+    },
+    "file.delete": {
+      "phase": 2,
+      "payload": { "path": "string", "dangerous": true }
+    },
+    "file.download": {
+      "phase": 2,
+      "payload": { "path": "string" },
+      "response": { "data": "base64", "name": "string", "size": 0 }
+    },
+    "process.list": {
+      "phase": 2,
+      "payload": {},
+      "response": { "processes": [{ "pid": 0, "name": "string", "cpu": 0, "memory": 0 }] }
+    },
+    "process.kill": {
+      "phase": 2,
+      "payload": { "pid": 0, "dangerous": true }
+    },
+    "clipboard.get": {
+      "phase": 2,
+      "payload": {},
+      "response": { "text": "string" }
+    },
+    "clipboard.set": {
+      "phase": 2,
+      "payload": { "text": "string" }
+    },
+    "window.list": {
+      "phase": 3,
+      "payload": {},
+      "response": { "windows": [{ "hwnd": 0, "title": "string", "visible": true }] }
+    },
+    "window.focus": {
+      "phase": 3,
+      "payload": { "hwnd": 0 }
+    },
+    "window.minimize": {
+      "phase": 3,
+      "payload": { "hwnd": 0 }
+    },
+    "app.launch": {
+      "phase": 3,
+      "payload": { "path": "string", "args": "" }
+    },
+    "app.close": {
+      "phase": 3,
+      "payload": { "hwnd": 0 }
+    },
+    "power.lock": {
+      "phase": 3,
+      "payload": {}
+    },
+    "power.sleep": {
+      "phase": 3,
+      "payload": { "dangerous": true }
+    },
+    "power.shutdown": {
+      "phase": 3,
+      "payload": { "dangerous": true }
+    },
+    "power.restart": {
+      "phase": 3,
+      "payload": { "dangerous": true }
+    },
+    "media.play": { "phase": 3, "payload": {} },
+    "media.pause": { "phase": 3, "payload": {} },
+    "media.volume": {
+      "phase": 3,
+      "payload": { "level": "int|mute|unmute" }
+    },
+    "macro.run": {
+      "phase": 4,
+      "payload": { "name": "string", "steps": [] }
+    },
+    "input.block": {
+      "phase": 4,
+      "payload": { "enabled": true }
+    },
+    "notify.send": {
+      "phase": 4,
+      "payload": { "title": "string", "message": "string" }
+    }
+  },
+  "auth": {
+    "pairing_endpoint": "/api/pairing",
+    "pairing_exchange": "/api/pairing/exchange",
+    "websocket": "/ws",
+    "token_header": "Authorization",
+    "token_prefix": "Bearer"
+  }
+}
