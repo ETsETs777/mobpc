@@ -106,7 +106,13 @@ def create_app() -> FastAPI:
                 cmd_type = msg.get("type")
                 payload = msg.get("payload") or {}
                 try:
-                    result = await dispatcher.dispatch(cmd_type, payload, client_id)
+                    async def send_event(event: dict) -> None:
+                        event["id"] = msg_id
+                        await websocket.send_json(event)
+
+                    result = await dispatcher.dispatch(
+                        cmd_type, payload, client_id, event_sender=send_event
+                    )
                     await websocket.send_json(
                         {"id": msg_id, "ok": True, "data": result, "error": None}
                     )

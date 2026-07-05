@@ -10,11 +10,13 @@ from executor.input import (
     screen_executor,
     system_executor,
 )
+from executor.shell_files import exec_shell, file_executor
 from server.config import settings
 
 logger = logging.getLogger(__name__)
 
-Handler = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
+Handler = Callable[..., Awaitable[dict[str, Any]]]
+EventSender = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 class RateLimiter:
@@ -46,9 +48,13 @@ class CommandDispatcher:
             "keyboard.key": self._wrap_sync(keyboard_executor.key),
             "keyboard.hotkey": self._wrap_sync(keyboard_executor.hotkey),
             "screen.capture": self._wrap_sync(screen_executor.capture),
+            "file.list": self._wrap_sync(file_executor.list_dir),
+            "file.read": self._wrap_sync(file_executor.read_file),
+            "file.write": self._wrap_sync(file_executor.write_file),
+            "file.delete": self._wrap_sync(file_executor.delete_file),
+            "file.download": self._wrap_sync(file_executor.download_file),
+            "shell.exec": self._shell_exec,
         }
-        self._stream_task: Optional[asyncio.Task] = None
-        self._stream_ws = None
 
     def _wrap_sync(self, fn: Callable[[dict[str, Any]], dict[str, Any]]) -> Handler:
         async def handler(payload: dict[str, Any]) -> dict[str, Any]:
@@ -56,8 +62,25 @@ class CommandDispatcher:
 
         return handler
 
+    async def _shell_exec(
+        self,
+        payload: dict[str, Any],
+        event_sender: Optional[EventSender] = None,
+    ) -> dict[str, Any]:
+        async def on_stream(stream: str, data: str) -> None:
+            if event_sender:
+                await event_sender(
+                    {"type": "shell.stream", "data": {"stream": stream, "data": data}}
+                )
+
+        return await exec_shell(payload, on_stream)
+
     async def dispatch(
-        self, command_type: str, payload: dict[str, Any], client_id: str
+        self,
+        command_type: str,
+        payload: dict[str, Any],
+        client_id: str,
+        event_sender: Optional[EventSender] = None,
     ) -> dict[str, Any]:
         if not self.rate_limiter.allow(client_id):
             raise PermissionError("Rate limit exceeded")
@@ -65,6 +88,8 @@ class CommandDispatcher:
         if handler is None:
             raise ValueError(f"Unknown command: {command_type}")
         logger.info("command=%s client=%s", command_type, client_id)
+        if command_type == "shell.exec":
+            return await handler(payload or {}, event_sender)
         return await handler(payload or {})
 
     def register(self, command_type: str, handler: Handler) -> None:
