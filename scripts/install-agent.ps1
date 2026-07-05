@@ -51,3 +51,8 @@ Write-Host ""
 Write-Host "Агент mobpc будет запускаться при входе в систему." -ForegroundColor Green
 Write-Host "Ручной запуск: $PythonExe `"$MainPy`""
 Write-Host "Удалить автозапуск: Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
+Write-Host ""
+Write-Host "Запуск агента как службы (альтернатива):" -ForegroundColor Cyan
+Write-Host "  nssm install mobpc `"$PythonExe`" `"$MainPy`""
+Write-Host "  nssm set mobpc AppDirectory `"$AgentDir`""
+Write-Host "  nssm start mobpc"

@@ -62,7 +62,7 @@ class HomeScreen extends ConsumerWidget {
   ) async {
     final client = ref.read(mobpcClientProvider);
     try {
-      await client.connect(profile);
+      await client.connect(profile, autoReconnect: true);
       if (!context.mounted) return;
       Navigator.push(
         context,

@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from auth.pairing import auth_manager
 from executor.dispatcher import dispatcher
+from executor.streaming import screen_streamer
 from server.config import settings
 
 logger = logging.getLogger(__name__)
@@ -123,5 +124,7 @@ def create_app() -> FastAPI:
                     )
         except WebSocketDisconnect:
             logger.info("Client disconnected: %s", client_id)
+            if screen_streamer.is_running:
+                await screen_streamer.stop()
 
     return app

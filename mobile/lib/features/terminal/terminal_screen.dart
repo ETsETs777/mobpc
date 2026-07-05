@@ -20,8 +20,10 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   @override
   void initState() {
     super.initState();
-    final client = ref.read(mobpcClientProvider);
-    client.events.listen(_onEvent);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final client = ref.read(mobpcClientProvider);
+      client.events.listen(_onEvent);
+    });
   }
 
   void _onEvent(Map<String, dynamic> event) {

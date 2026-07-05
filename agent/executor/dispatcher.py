@@ -10,6 +10,10 @@ from executor.input import (
     screen_executor,
     system_executor,
 )
+from executor.input_block import input_blocker
+from executor.macros import macro_runner
+from executor.notify import notify_executor
+from executor.streaming import screen_streamer
 from executor.shell_files import exec_shell, file_executor
 from executor.system_control import (
     app_executor,
@@ -78,6 +82,10 @@ class CommandDispatcher:
             "media.play": self._wrap_sync(media_executor.play),
             "media.pause": self._wrap_sync(media_executor.pause),
             "media.volume": self._wrap_sync(media_executor.volume),
+            "screen.stream": self._screen_stream,
+            "macro.run": self._macro_run,
+            "input.block": self._wrap_sync(input_blocker.set_blocked),
+            "notify.send": self._wrap_sync(notify_executor.send),
         }
 
     def _wrap_sync(self, fn: Callable[[dict[str, Any]], dict[str, Any]]) -> Handler:
@@ -99,6 +107,17 @@ class CommandDispatcher:
 
         return await exec_shell(payload, on_stream)
 
+    async def _screen_stream(
+        self,
+        payload: dict[str, Any],
+        event_sender: Optional[EventSender] = None,
+        client_id: str = "",
+    ) -> dict[str, Any]:
+        return await screen_streamer.handle(payload, client_id, event_sender)
+
+    async def _macro_run(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await macro_runner.run(payload)
+
     async def dispatch(
         self,
         command_type: str,
@@ -114,6 +133,8 @@ class CommandDispatcher:
         logger.info("command=%s client=%s", command_type, client_id)
         if command_type == "shell.exec":
             return await handler(payload or {}, event_sender)
+        if command_type == "screen.stream":
+            return await handler(payload or {}, event_sender, client_id)
         return await handler(payload or {})
 
     def register(self, command_type: str, handler: Handler) -> None:

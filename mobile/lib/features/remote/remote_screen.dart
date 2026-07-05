@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/websocket_client.dart';
 import '../keyboard/keyboard_screen.dart';
+import '../macros/macros_screen.dart';
 import '../quick_actions/quick_actions_screen.dart';
 import '../terminal/terminal_screen.dart';
 import '../files/files_screen.dart';
@@ -22,13 +24,65 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
   int _screenW = 1920;
   int _screenH = 1080;
   bool _loading = false;
+  bool _streaming = false;
   Offset? _lastTouch;
-  double _scale = 1.0;
+  StreamSubscription? _eventSub;
+  StreamSubscription? _stateSub;
+  ConnectionState _connState = ConnectionState.disconnected;
 
   @override
   void initState() {
     super.initState();
-    _refreshScreen();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final client = ref.read(mobpcClientProvider);
+      _connState = client.state;
+      _eventSub = client.events.listen(_onEvent);
+      _stateSub = client.stateChanges.listen((s) {
+        if (mounted) setState(() => _connState = s);
+      });
+      _startStream();
+    });
+  }
+
+  void _onEvent(Map<String, dynamic> event) {
+    if (event['type'] == 'screen.stream') {
+      final data = event['data'] as Map<String, dynamic>?;
+      final b64 = data?['image'] as String?;
+      if (b64 != null && mounted) {
+        setState(() {
+          _screenImage = base64Decode(b64);
+          _screenW = data?['width'] as int? ?? _screenW;
+          _screenH = data?['height'] as int? ?? _screenH;
+        });
+      }
+    }
+  }
+
+  Future<void> _startStream() async {
+    setState(() {
+      _loading = true;
+      _streaming = true;
+    });
+    try {
+      final client = ref.read(mobpcClientProvider);
+      await client.send(
+        'screen.stream',
+        payload: {'action': 'start', 'fps': 8, 'quality': 45},
+      );
+    } catch (_) {
+      await _refreshScreen();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _stopStream() async {
+    if (!_streaming) return;
+    try {
+      final client = ref.read(mobpcClientProvider);
+      await client.send('screen.stream', payload: {'action': 'stop'});
+    } catch (_) {}
+    if (mounted) setState(() => _streaming = false);
   }
 
   Future<void> _refreshScreen() async {
@@ -58,7 +112,7 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
       'y': y,
       'button': button,
     });
-    _refreshScreen();
+    if (!_streaming) _refreshScreen();
   }
 
   Future<void> _sendMove(Offset local, Size viewSize) async {
@@ -80,11 +134,57 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
   }
 
   @override
+  void dispose() {
+    _stopStream();
+    _eventSub?.cancel();
+    _stateSub?.cancel();
+    super.dispose();
+  }
+
+  Color _stateColor() {
+    switch (_connState) {
+      case ConnectionState.connected:
+        return Colors.green;
+      case ConnectionState.reconnecting:
+      case ConnectionState.connecting:
+        return Colors.orange;
+      case ConnectionState.error:
+        return Colors.red;
+      case ConnectionState.disconnected:
+        return Colors.grey;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Удалённый рабочий стол'),
+        title: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: _stateColor(),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('Удалённый рабочий стол'),
+          ],
+        ),
         actions: [
+          IconButton(
+            icon: Icon(_streaming ? Icons.stop_circle : Icons.play_circle),
+            onPressed: () {
+              if (_streaming) {
+                _stopStream();
+                _refreshScreen();
+              } else {
+                _startStream();
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loading ? null : _refreshScreen,
@@ -104,6 +204,10 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
                   Navigator.push(context,
                       MaterialPageRoute(builder: (_) => const FilesScreen()));
                   break;
+                case 'macros':
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const MacrosScreen()));
+                  break;
                 case 'actions':
                   Navigator.push(
                     context,
@@ -116,6 +220,7 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
               PopupMenuItem(value: 'keyboard', child: Text('Клавиатура')),
               PopupMenuItem(value: 'terminal', child: Text('Терминал')),
               PopupMenuItem(value: 'files', child: Text('Файлы')),
+              PopupMenuItem(value: 'macros', child: Text('Макросы')),
               PopupMenuItem(value: 'actions', child: Text('Быстрые действия')),
             ],
           ),
@@ -123,6 +228,8 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
       ),
       body: Column(
         children: [
+          if (_connState == ConnectionState.reconnecting)
+            const LinearProgressIndicator(),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -135,11 +242,6 @@ class _RemoteScreenState extends ConsumerState<RemoteScreen> {
                     }
                   },
                   onPanUpdate: (d) => _sendMove(d.localPosition, viewSize),
-                  onScaleUpdate: (d) {
-                    if (d.scale != 1.0) {
-                      setState(() => _scale = (_scale * d.scale).clamp(0.5, 3.0));
-                    }
-                  },
                   child: InteractiveViewer(
                     scaleEnabled: true,
                     minScale: 0.5,
