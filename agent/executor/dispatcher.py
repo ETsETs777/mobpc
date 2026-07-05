@@ -11,6 +11,14 @@ from executor.input import (
     system_executor,
 )
 from executor.shell_files import exec_shell, file_executor
+from executor.system_control import (
+    app_executor,
+    clipboard_executor,
+    media_executor,
+    power_executor,
+    process_executor,
+    window_executor,
+)
 from server.config import settings
 
 logger = logging.getLogger(__name__)
@@ -54,6 +62,22 @@ class CommandDispatcher:
             "file.delete": self._wrap_sync(file_executor.delete_file),
             "file.download": self._wrap_sync(file_executor.download_file),
             "shell.exec": self._shell_exec,
+            "process.list": self._wrap_sync(process_executor.list_processes),
+            "process.kill": self._wrap_sync(process_executor.kill_process),
+            "clipboard.get": self._wrap_sync(clipboard_executor.get_clipboard),
+            "clipboard.set": self._wrap_sync(clipboard_executor.set_clipboard),
+            "window.list": self._wrap_sync(window_executor.list_windows),
+            "window.focus": self._wrap_sync(window_executor.focus_window),
+            "window.minimize": self._wrap_sync(window_executor.minimize_window),
+            "app.launch": self._wrap_sync(app_executor.launch),
+            "app.close": self._wrap_sync(window_executor.close_window),
+            "power.lock": self._wrap_sync(power_executor.lock),
+            "power.sleep": self._wrap_sync(power_executor.sleep),
+            "power.shutdown": self._wrap_sync(power_executor.shutdown),
+            "power.restart": self._wrap_sync(power_executor.restart),
+            "media.play": self._wrap_sync(media_executor.play),
+            "media.pause": self._wrap_sync(media_executor.pause),
+            "media.volume": self._wrap_sync(media_executor.volume),
         }
 
     def _wrap_sync(self, fn: Callable[[dict[str, Any]], dict[str, Any]]) -> Handler:
