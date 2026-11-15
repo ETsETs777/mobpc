@@ -36,3 +36,12 @@ Desktop.ini
 .env
 *.token
 pairing_secret.json
+
+# Local caches (pip/temp for start.bat)
+.cache/
+
+# cloudflared, скачивается агентом при включении доступа через интернет
+agent/tools/
+
+# Временные файлы Office (документ открыт)
+~$*

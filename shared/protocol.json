@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.2.0",
   "message_format": {
     "request": {
       "id": "uuid",
@@ -23,6 +23,11 @@
       "payload": {},
       "response": { "pong": true, "timestamp": "iso8601" }
     },
+    "system.stats": {
+      "phase": 5,
+      "payload": {},
+      "response": { "cpu": 0, "ram": { "used": 0, "total": 0, "percent": 0 }, "disk": {}, "battery": null, "uptime": 0 }
+    },
     "system.info": {
       "phase": 1,
       "payload": {},
@@ -31,6 +36,14 @@
     "mouse.move": {
       "phase": 1,
       "payload": { "x": "int", "y": "int" }
+    },
+    "mouse.move_rel": {
+      "phase": 5,
+      "payload": { "dx": "int", "dy": "int" }
+    },
+    "mouse.button": {
+      "phase": 5,
+      "payload": { "button": "left|right|middle", "action": "press|release" }
     },
     "mouse.click": {
       "phase": 1,
@@ -64,7 +77,8 @@
     "screen.stream": {
       "phase": 4,
       "payload": { "action": "start|stop", "fps": 10, "quality": 50 },
-      "event": { "image": "base64_jpeg", "width": 0, "height": 0 }
+      "payload_extra": { "max_width": 1280, "monitor": 0 },
+      "event": { "image": "base64_jpeg", "width": 0, "height": 0, "left": 0, "top": 0, "img_width": 0, "img_height": 0 }
     },
     "shell.exec": {
       "phase": 2,
@@ -152,6 +166,8 @@
     },
     "media.play": { "phase": 3, "payload": {} },
     "media.pause": { "phase": 3, "payload": {} },
+    "media.next": { "phase": 5, "payload": {} },
+    "media.prev": { "phase": 5, "payload": {} },
     "media.volume": {
       "phase": 3,
       "payload": { "level": "int|mute|unmute" }
@@ -164,6 +180,14 @@
       "phase": 4,
       "payload": { "enabled": true }
     },
+    "download.start": {
+      "phase": 6,
+      "payload": { "url": "http(s)://...", "dir": "optional, default ~/Downloads" },
+      "response": { "id": "string", "status": "starting|downloading|done|error|cancelled", "received": 0, "total": 0 }
+    },
+    "download.list": { "phase": 6, "payload": {}, "response": { "downloads": [] } },
+    "download.cancel": { "phase": 6, "payload": { "id": "string" } },
+    "power.keep_awake": { "phase": 6, "payload": { "enabled": true }, "response": { "keep_awake": true } },
     "notify.send": {
       "phase": 4,
       "payload": { "title": "string", "message": "string" }
@@ -172,6 +196,14 @@
   "auth": {
     "pairing_endpoint": "/api/pairing",
     "pairing_exchange": "/api/pairing/exchange",
+    "pairing_status": "/api/pairing/{code}",
+    "pairing_qr": "/api/pairing/{code}/qr.png",
+    "devices": "/api/devices",
+    "file_download": "/api/files/download?path=...&token=...",
+    "pairing_local_only": true,
+    "tunnel": "GET /api/tunnel, POST /api/tunnel/start|stop (local only)",
+    "keep_awake": "POST /api/keep-awake?enabled=true|false (local only)",
+    "qr_content": "http://<host>:<port>/app#pair=<CODE>",
     "websocket": "/ws",
     "token_header": "Authorization",
     "token_prefix": "Bearer"

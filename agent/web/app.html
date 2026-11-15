@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content">
+<meta name="theme-color" content="#1e2227">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>mobpc — пульт</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-pad" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M4 15h16M12 15v6"/></symbol>
+    <symbol id="i-keys" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-drive" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h.01M11 12h6"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 18 4-6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l11-7Z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </defs>
+</svg>
+
+<!-- Экран привязки -->
+<section id="pair" class="pair" hidden>
+  <div class="pair__inner">
+    <div class="pair__logo"><span class="logo-mark" aria-hidden="true"></span>mobpc</div>
+    <h1 class="pair__title">Подключите телефон к компьютеру</h1>
+    <p class="pair__text">Откройте на компьютере страницу «Подключить телефон» и наведите камеру на QR-код. Или введите код с экрана вручную.</p>
+    <form id="pair-form" class="pair__form" autocomplete="off">
+      <label for="pair-code">Код с экрана компьютера</label>
+      <input id="pair-code" name="code" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="ABCD-EFGH" required>
+      <button class="key key--screen" type="submit" id="pair-submit">Подключить</button>
+    </form>
+    <p id="pair-error" class="pair__error" role="alert" hidden></p>
+  </div>
+</section>
+
+<!-- Основной интерфейс -->
+<div id="shell" class="shell" hidden>
+  <header class="top">
+    <span id="conn-dot" class="dot" aria-hidden="true"></span>
+    <div class="top__title">
+      <strong id="pc-name">Компьютер</strong>
+      <span id="conn-text">Подключение…</span>
+    </div>
+    <button class="icon-btn" id="menu-btn" aria-label="Меню"><svg><use href="#i-menu"/></svg></button>
+  </header>
+
+  <main class="panels">
+    <!-- ЭКРАН -->
+    <section class="panel panel--screen" data-panel="screen" aria-label="Экран">
+      <div class="viewer" id="viewer-main">
+        <div class="viewer__stage"><img class="viewer__img" alt="Экран компьютера" draggable="false"></div>
+        <div class="viewer__empty">Ждём первый кадр с компьютера…</div>
+        <div class="viewer__scroll" aria-label="Прокрутка"><span></span></div>
+        <div class="viewer__hud"></div>
+      </div>
+      <div class="toolbar">
+        <button class="key key--screen" id="stream-toggle"><svg class="ico"><use href="#i-stop"/></svg><span>Пауза</span></button>
+        <div class="seg" role="radiogroup" aria-label="Кнопка мыши для касания">
+          <button class="seg__btn is-on" data-tap="left" role="radio" aria-checked="true">ЛКМ</button>
+          <button class="seg__btn" data-tap="right" role="radio" aria-checked="false">ПКМ</button>
+        </div>
+        <select id="quality" class="select" aria-label="Качество картинки">
+          <option value="sharp">Чётко</option>
+          <option value="balanced">Баланс</option>
+          <option value="fast">Быстро</option>
+          <option value="internet">Интернет</option>
+        </select>
+        <button class="icon-btn icon-btn--light" id="kbd-toggle" aria-label="Клавиатура" aria-pressed="false"><svg><use href="#i-keys"/></svg></button>
+        <button class="icon-btn icon-btn--light" id="zoom-reset" aria-label="Сбросить масштаб" hidden><svg><use href="#i-fit"/></svg></button>
+      </div>
+      <div class="kbd-drawer" id="screen-kbd" hidden></div>
+      <p class="hint" id="screen-hint">Касание — клик. Долгое касание — правый клик. Двумя пальцами — масштаб. Полоса справа — прокрутка.</p>
+    </section>
+
+    <!-- ТАЧПАД -->
+    <section class="panel panel--pad" data-panel="pad" aria-label="Тачпад" hidden>
+      <div class="mini" data-mini="pad">
+        <div class="viewer viewer--mini">
+          <div class="viewer__stage"><img class="viewer__img" alt="Экран компьютера" draggable="false"></div>
+          <div class="viewer__empty">Ждём кадр…</div>
+        </div>
+      </div>
+      <div class="pad" id="pad">
+        <span class="pad__hint">Водите пальцем как по тачпаду ноутбука.<br>Касание — клик, двумя пальцами — правый клик и прокрутка, удержание — перетаскивание.</span>
+      </div>
+      <div class="pad-buttons">
+        <button class="key key--light" id="pad-left">Левая</button>
+        <button class="key key--light" id="pad-right">Правая</button>
+      </div>
+      <div class="row">
+        <label class="slider">Скорость <input type="range" id="pad-speed" min="0.6" max="3" step="0.1" value="1.6"></label>
+        <button class="chip mini-toggle" data-mini-toggle="pad"><svg class="ico ico--sm"><use href="#i-eye"/></svg><span>Экран</span></button>
+      </div>
+    </section>
+
+    <!-- ВВОД -->
+    <section class="panel panel--keys" data-panel="keys" aria-label="Клавиатура" hidden>
+      <div class="mini" data-mini="keys">
+        <div class="viewer viewer--mini">
+          <div class="viewer__stage"><img class="viewer__img" alt="Экран компьютера" draggable="false"></div>
+          <div class="viewer__empty">Ждём кадр…</div>
+        </div>
+      </div>
+      <div class="kbd" id="keys-kbd"></div>
+      <div class="sub-row">
+        <h2 class="sub">Сочетания</h2>
+        <button class="chip mini-toggle" data-mini-toggle="keys"><svg class="ico ico--sm"><use href="#i-eye"/></svg><span>Экран</span></button>
+      </div>
+      <div class="chips" id="hk-groups" role="tablist" aria-label="Группы сочетаний"></div>
+      <div class="keygrid keygrid--wide" id="hotkeys"></div>
+      <details class="more">
+        <summary>Отправить длинный текст целиком</summary>
+        <textarea id="text-input" class="input" rows="3" placeholder="Например, адрес сайта или пароль от Wi-Fi гостя"></textarea>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="text-enter"> Нажать Enter после</label>
+          <button class="key key--input" id="text-send">Отправить текст</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- ТЕРМИНАЛ -->
+    <section class="panel panel--term" data-panel="term" aria-label="Терминал" hidden>
+      <div class="term">
+        <div class="term__bar">
+          <select id="shell-select" class="select select--dark" aria-label="Оболочка">
+            <option value="powershell">PowerShell</option>
+            <option value="cmd">cmd</option>
+          </select>
+          <span class="term__cwd" id="term-cwd"></span>
+          <button class="icon-btn" id="term-clear" aria-label="Очистить">✕</button>
+        </div>
+        <pre class="term__out" id="term-out" aria-live="polite"></pre>
+        <div class="term__chips" id="term-chips"></div>
+        <form class="term__in" id="term-form" autocomplete="off">
+          <span class="term__prompt">›</span>
+          <input id="term-input" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Команда, например ipconfig" aria-label="Команда">
+          <button class="key key--term" type="submit">Выполнить</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ФАЙЛЫ -->
+    <section class="panel panel--files" data-panel="files" aria-label="Файлы" hidden>
+      <form class="dl-form" id="dl-form" autocomplete="off">
+        <label for="dl-url">Скачать файл на компьютер по ссылке</label>
+        <div class="row row--nowrap">
+          <input class="input" id="dl-url" type="url" inputmode="url" placeholder="https://…" required>
+          <button class="key key--term" type="submit"><svg class="ico"><use href="#i-download"/></svg><span class="visually-hidden">Скачать на ПК</span></button>
+        </div>
+      </form>
+      <ul class="list dl-list" id="dl-list"></ul>
+
+      <div class="files__bar">
+        <button class="icon-btn icon-btn--light" id="files-up" aria-label="Наверх"><svg><use href="#i-up"/></svg></button>
+        <div class="files__path" id="files-path"></div>
+        <label class="key key--term key--sm" for="upload-input">Загрузить</label>
+        <input type="file" id="upload-input" class="visually-hidden" multiple>
+      </div>
+      <div class="files__quick">
+        <button class="chip" data-path="~">Домашняя папка</button>
+        <button class="chip" data-path="~\Desktop">Рабочий стол</button>
+        <button class="chip" data-path="~\Downloads">Загрузки</button>
+        <button class="chip" data-path="::drives">Диски</button>
+      </div>
+      <ul class="files__list" id="files-list"></ul>
+    </section>
+
+    <!-- СИСТЕМА -->
+    <section class="panel panel--system" data-panel="system" aria-label="Система" hidden>
+      <div class="stats" id="stats">
+        <div class="stat"><span class="stat__label">Процессор</span><strong id="st-cpu">—</strong><i class="meter"><b id="mt-cpu"></b></i></div>
+        <div class="stat"><span class="stat__label">Память</span><strong id="st-ram">—</strong><i class="meter"><b id="mt-ram"></b></i></div>
+        <div class="stat"><span class="stat__label">Диск</span><strong id="st-disk">—</strong><i class="meter"><b id="mt-disk"></b></i></div>
+        <div class="stat"><span class="stat__label" id="st-extra-label">Работает</span><strong id="st-extra">—</strong></div>
+      </div>
+
+      <label class="switch">
+        <input type="checkbox" id="keep-awake" role="switch">
+        <span class="switch__track" aria-hidden="true"></span>
+        <span class="switch__text"><strong>Не давать компьютеру засыпать</strong><small>Включите, если управляете издалека: уснувший ПК не ответит.</small></span>
+      </label>
+
+      <h2 class="sub">Музыка и громкость</h2>
+      <div class="keygrid keygrid--5">
+        <button class="key key--light" data-cmd="media.prev" aria-label="Предыдущий трек">⏮</button>
+        <button class="key key--light" data-cmd="media.play" aria-label="Пауза или воспроизведение">⏯</button>
+        <button class="key key--light" data-cmd="media.next" aria-label="Следующий трек">⏭</button>
+        <button class="key key--light" data-cmd="media.volume" data-payload='{"level":-3}'>Тише</button>
+        <button class="key key--light" data-cmd="media.volume" data-payload='{"level":3}'>Громче</button>
+      </div>
+
+      <h2 class="sub">Сценарии</h2>
+      <div class="keygrid keygrid--wide" id="macros"></div>
+
+      <h2 class="sub">Сообщение на экран компьютера</h2>
+      <form class="row row--stack" id="notify-form">
+        <input class="input" id="notify-text" placeholder="Текст уведомления" required>
+        <button class="key key--input" type="submit">Показать</button>
+      </form>
+
+      <h2 class="sub">Буфер обмена</h2>
+      <div class="row row--stack">
+        <textarea class="input" id="clip-text" rows="2" placeholder="Текст буфера обмена"></textarea>
+        <div class="row">
+          <button class="key key--light" id="clip-get">Забрать с ПК</button>
+          <button class="key key--light" id="clip-set">Отправить на ПК</button>
+        </div>
+      </div>
+
+      <h2 class="sub">Окна <button class="link" id="win-refresh">обновить</button></h2>
+      <ul class="list" id="win-list"></ul>
+
+      <h2 class="sub">Процессы <button class="link" id="proc-refresh">обновить</button></h2>
+      <input class="input" id="proc-filter" placeholder="Поиск процесса">
+      <ul class="list" id="proc-list"></ul>
+
+      <h2 class="sub">Питание</h2>
+      <div class="keygrid keygrid--wide">
+        <button class="key key--light" data-cmd="power.lock">Заблокировать</button>
+        <button class="key key--system" data-cmd="power.sleep" data-confirm="Перевести компьютер в спящий режим? Издалека разбудить его не получится.">Сон</button>
+        <button class="key key--system" data-cmd="power.restart" data-confirm="Перезагрузить компьютер через 5 секунд?">Перезагрузить</button>
+        <button class="key key--system" data-cmd="power.shutdown" data-confirm="Выключить компьютер через 5 секунд? Издалека включить его не получится.">Выключить</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Разделы">
+    <button class="tab is-on" data-tab="screen" style="--c: var(--c-screen)"><svg><use href="#i-screen"/></svg>Экран</button>
+    <button class="tab" data-tab="pad" style="--c: var(--c-input)"><svg><use href="#i-pad"/></svg>Тачпад</button>
+    <button class="tab" data-tab="keys" style="--c: var(--c-input)"><svg><use href="#i-keys"/></svg>Ввод</button>
+    <button class="tab" data-tab="term" style="--c: var(--c-term)"><svg><use href="#i-term"/></svg>Терминал</button>
+    <button class="tab" data-tab="files" style="--c: var(--c-term)"><svg><use href="#i-folder"/></svg>Файлы</button>
+    <button class="tab" data-tab="system" style="--c: var(--c-system)"><svg><use href="#i-gauge"/></svg>Система</button>
+  </nav>
+</div>
+
+<!-- Нижние листы и уведомления -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__card" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h3 id="sheet-title"></h3>
+    <p id="sheet-text"></p>
+    <div class="sheet__actions" id="sheet-actions"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class MobpcCommand {
   MobpcCommand({
     required this.id,
@@ -56,6 +58,28 @@ class PairingPayload {
       port: json['port'] as int,
       code: json['code'] as String,
     );
+  }
+
+  /// Разбирает содержимое QR: ссылку агента 1.1+ (`http://host:port/app#pair=CODE`)
+  /// или старый JSON-формат (`{"type":"mobpc_pairing", ...}`).
+  static PairingPayload? tryParse(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      final match = RegExp(r'pair=([A-Za-z0-9-]+)').firstMatch(uri.fragment);
+      if (match == null || uri.host.isEmpty) return null;
+      return PairingPayload(
+        host: uri.host,
+        port: uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80),
+        code: match.group(1)!,
+      );
+    }
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      if (json['type'] != 'mobpc_pairing') return null;
+      return PairingPayload.fromJson(json);
+    } catch (_) {
+      return null;
+    }
   }
 }
 

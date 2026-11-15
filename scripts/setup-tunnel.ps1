@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Настройка интернет-доступа к mobpc агенту через Tailscale или Cloudflare Tunnel.

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mobpc — управление компьютером с телефона</title>
+<meta name="description" content="mobpc показывает экран Windows на телефоне и превращает телефон в мышь, клавиатуру, терминал и пульт. Подключение по QR-коду, без установки приложений.">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-pad" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M4 15h16M12 15v6"/></symbol>
+    <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 18 4-6"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9H4Z"/><path d="M10 20v-5h4v5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-unplug" viewBox="0 0 24 24"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0ZM12 16v5"/><path d="M3 3l18 18"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M12 3v9M8 6v7M16 6v7M4 11v2a8 8 0 0 0 16 0v-2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  </defs>
+</svg>
+
+<header class="nav">
+  <a class="brand" href="/"><span class="brand__mark" aria-hidden="true"></span>mobpc</a>
+  <span class="nav__status" id="agent-status"></span>
+  <a class="nav__link" href="#features">Возможности</a>
+  <a class="nav__link" href="#how">Как устроено</a>
+  <a class="nav__link" href="#security">Безопасность</a>
+  <a class="key key--screen" href="/connect">Подключить телефон</a>
+</header>
+
+<main>
+  <section class="wrap hero">
+    <div>
+      <h1 class="hero__title">Управляйте компьютером с телефона</h1>
+      <p class="hero__lead">mobpc показывает экран Windows на телефоне и превращает телефон в мышь, клавиатуру, терминал и пульт. Наведите камеру на QR-код — пульт откроется в браузере, устанавливать ничего не нужно.</p>
+      <div class="hero__actions">
+        <a class="key key--screen" href="/connect">Подключить телефон</a>
+        <a class="key key--light" href="/app">Открыть пульт</a>
+      </div>
+      <p class="hero__note">Работает в домашней сети Wi-Fi, а с доступом через интернет — из колледжа, с работы, из любой точки мира.</p>
+    </div>
+
+    <figure class="demo" id="demo">
+      <div class="demo__stage">
+      <div class="monitor">
+        <div class="desk" id="desk">
+          <div class="desk__icons">
+            <div class="desk-icon" data-open="olymp">
+              <svg viewBox="0 0 48 40"><path d="M2 6a4 4 0 0 1 4-4h12l4 4h20a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4Z" fill="#f2b705"/><path d="M2 12h44v22a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4Z" fill="#ffd43b"/></svg>
+              Олимпиада
+            </div>
+            <div class="desk-icon" data-open="term">
+              <svg viewBox="0 0 48 40"><rect x="2" y="2" width="44" height="36" rx="5" fill="#14171b"/><path d="m10 13 7 6-7 6M21 26h12" stroke="#8ce99a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Терминал
+            </div>
+            <div class="desk-icon" data-open="bin">
+              <svg viewBox="0 0 48 40"><path d="M14 8h20l-2 30H16Z" fill="#dfe3e8"/><rect x="11" y="4" width="26" height="5" rx="2" fill="#aab2bd"/></svg>
+              Корзина
+            </div>
+          </div>
+          <div class="win" id="win" hidden>
+            <div class="win__bar"><span id="win-title"></span><span class="win__close" id="win-close">✕</span></div>
+            <div class="win__body" id="win-body"></div>
+          </div>
+          <div class="taskbar"><i></i><i></i><i></i><i></i><span class="taskbar__clock" id="clock"></span></div>
+          <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2v17l4.5-4 3 6.5 2.5-1.2-2.8-6.3h6.3Z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      <div class="monitor__stand"></div>
+      <div class="monitor__base"></div>
+      <div class="phone">
+        <div class="phone__top"><span class="dot dot--ok"></span><b>Мой компьютер</b></div>
+        <div class="phone__pad" id="pad" aria-label="Демонстрационный тачпад"><span class="finger" id="finger"></span></div>
+        <div class="phone__btns"><span></span><span></span></div>
+      </div>
+      </div>
+      <figcaption class="demo__caption">Попробуйте: ведите мышью или пальцем по тачпаду телефона и коснитесь, чтобы открыть папку.</figcaption>
+    </figure>
+  </section>
+
+  <section class="section" id="features">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 class="section__title">Всё, что нужно, когда до компьютера не дотянуться</h2>
+        <p class="section__lead">Разделы пульта окрашены, как кнопки на пульте телевизора: синий — экран, жёлтый — ввод, зелёный — терминал и файлы, красный — система. Те же цвета вы увидите в приложении.</p>
+      </div>
+      <div class="features">
+        <article class="feature">
+          <span class="feature__key"><svg><use href="#i-screen"/></svg></span>
+          <h3>Экран</h3>
+          <ul>
+            <li>Трансляция рабочего стола до 15 кадров в секунду</li>
+            <li>Касание по картинке — клик в этой точке экрана</li>
+            <li>Долгое касание — правый клик, двумя пальцами — масштаб</li>
+            <li>Три режима качества под скорость сети</li>
+          </ul>
+        </article>
+        <article class="feature feature--input">
+          <span class="feature__key"><svg><use href="#i-pad"/></svg></span>
+          <h3>Мышь и клавиатура</h3>
+          <ul>
+            <li>Тачпад с жестами, как у ноутбука</li>
+            <li>Печать с телефона сразу на ПК, по-русски тоже</li>
+            <li>Горячие клавиши: копировать, сменить окно, язык</li>
+            <li>Переключение слайдов презентации</li>
+          </ul>
+        </article>
+        <article class="feature feature--term">
+          <span class="feature__key"><svg><use href="#i-term"/></svg></span>
+          <h3>Терминал и файлы</h3>
+          <ul>
+            <li>PowerShell и cmd с выводом в реальном времени</li>
+            <li>Файловый менеджер по всем дискам</li>
+            <li>Скачивание файлов на телефон и загрузка на ПК</li>
+            <li>Открытие файла на компьютере одним касанием</li>
+          </ul>
+        </article>
+        <article class="feature feature--system">
+          <span class="feature__key"><svg><use href="#i-gauge"/></svg></span>
+          <h3>Система</h3>
+          <ul>
+            <li>Нагрузка процессора, память, диск и батарея</li>
+            <li>Окна и процессы: показать, свернуть, завершить</li>
+            <li>Музыка, громкость, буфер обмена, уведомления</li>
+            <li>Блокировка, сон, перезагрузка, выключение</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 class="section__title">Подключение за минуту</h2>
+        <p class="section__lead">Не нужно настраивать роутер, знать IP-адрес или ставить приложение из магазина.</p>
+      </div>
+      <ol class="steps">
+        <li class="step">
+          <span class="step__num">1</span>
+          <h3>Запустите агент</h3>
+          <p>Дважды щёлкните <code>start.bat</code>. Скрипт сам поставит зависимости и откроет страницу с QR-кодом.</p>
+        </li>
+        <li class="step">
+          <span class="step__num">2</span>
+          <h3>Наведите камеру</h3>
+          <p>Телефон в той же сети Wi-Fi откроет пульт по ссылке из QR-кода. Код одноразовый и действует 5 минут.</p>
+        </li>
+        <li class="step">
+          <span class="step__num">3</span>
+          <h3>Управляйте</h3>
+          <p>Телефон запомнит компьютер. В следующий раз достаточно открыть пульт с главного экрана телефона.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section--dark" id="how">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 class="section__title">Как устроено</h2>
+        <p class="section__lead">На компьютере работает агент на Python. Телефон отправляет ему команды в формате JSON по WebSocket, агент проверяет токен и выполняет команду через Windows API.</p>
+      </div>
+      <div class="arch">
+        <svg viewBox="0 0 730 360" role="img" aria-labelledby="arch-title">
+          <title id="arch-title">Схема: телефон связан с агентом по WebSocket, агент передаёт команды четырём исполнителям, которые работают с Windows</title>
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#aab2bd"/></marker>
+          </defs>
+          <rect x="10" y="90" width="140" height="190" rx="24" fill="#31373f" stroke="#4a525c"/>
+          <rect x="52" y="104" width="56" height="6" rx="3" fill="#4a525c"/>
+          <text x="80" y="175" text-anchor="middle" class="t-head" font-size="18" fill="#fff">Телефон</text>
+          <text x="80" y="200" text-anchor="middle" font-size="13" fill="#aab2bd">браузер</text>
+          <text x="80" y="218" text-anchor="middle" font-size="13" fill="#aab2bd">или Flutter</text>
+
+          <line x1="152" y1="160" x2="226" y2="160" stroke="#aab2bd" stroke-width="2" marker-end="url(#ar)"/>
+          <text x="190" y="148" text-anchor="middle" font-size="12" fill="#cfd5dc">команды</text>
+          <line x1="226" y1="215" x2="152" y2="215" stroke="#aab2bd" stroke-width="2" marker-end="url(#ar)"/>
+          <text x="190" y="237" text-anchor="middle" font-size="12" fill="#cfd5dc">кадры,</text>
+          <text x="190" y="253" text-anchor="middle" font-size="12" fill="#cfd5dc">ответы</text>
+          <text x="190" y="190" text-anchor="middle" font-size="11" fill="#7c8591">WebSocket</text>
+
+          <rect x="230" y="50" width="190" height="270" rx="14" fill="#31373f" stroke="#4a525c"/>
+          <text x="325" y="84" text-anchor="middle" class="t-head" font-size="18" fill="#fff">Агент mobpc</text>
+          <text x="325" y="104" text-anchor="middle" font-size="12" fill="#aab2bd">Python, FastAPI, Uvicorn</text>
+          <rect x="246" y="124" width="158" height="40" rx="8" fill="#262b31"/>
+          <text x="325" y="149" text-anchor="middle" font-size="13" fill="#e5e8ec">Проверка токена</text>
+          <rect x="246" y="174" width="158" height="40" rx="8" fill="#262b31"/>
+          <text x="325" y="199" text-anchor="middle" font-size="13" fill="#e5e8ec">Лимит частоты</text>
+          <rect x="246" y="224" width="158" height="40" rx="8" fill="#262b31"/>
+          <text x="325" y="249" text-anchor="middle" font-size="13" fill="#e5e8ec">Диспетчер: 45 команд</text>
+          <text x="325" y="296" text-anchor="middle" font-size="11" fill="#7c8591">порт 8765</text>
+
+          <g stroke="#6b7480" stroke-width="1.5" fill="none">
+            <path d="M420 244 C455 244 455 60 488 60"/>
+            <path d="M420 244 C455 244 455 140 488 140"/>
+            <path d="M420 244 C455 244 455 220 488 220"/>
+            <path d="M420 244 C455 244 455 300 488 300"/>
+          </g>
+          <g>
+            <rect x="490" y="30" width="170" height="60" rx="10" fill="#31373f"/><rect x="490" y="30" width="6" height="60" rx="3" fill="#3b5bdb"/>
+            <text x="508" y="56" class="t-head" font-size="15" fill="#fff">Экран</text><text x="508" y="76" font-size="12" fill="#aab2bd">mss, Pillow, JPEG</text>
+            <rect x="490" y="110" width="170" height="60" rx="10" fill="#31373f"/><rect x="490" y="110" width="6" height="60" rx="3" fill="#f2b705"/>
+            <text x="508" y="136" class="t-head" font-size="15" fill="#fff">Ввод</text><text x="508" y="156" font-size="12" fill="#aab2bd">pynput: мышь, клавиши</text>
+            <rect x="490" y="190" width="170" height="60" rx="10" fill="#31373f"/><rect x="490" y="190" width="6" height="60" rx="3" fill="#2f9e44"/>
+            <text x="508" y="216" class="t-head" font-size="15" fill="#fff">Терминал и файлы</text><text x="508" y="236" font-size="12" fill="#aab2bd">PowerShell, cmd</text>
+            <rect x="490" y="270" width="170" height="60" rx="10" fill="#31373f"/><rect x="490" y="270" width="6" height="60" rx="3" fill="#e03131"/>
+            <text x="508" y="296" class="t-head" font-size="15" fill="#fff">Система</text><text x="508" y="316" font-size="12" fill="#aab2bd">psutil, pywin32</text>
+          </g>
+          <g stroke="#6b7480" stroke-width="1.5">
+            <line x1="660" y1="60" x2="680" y2="60"/><line x1="660" y1="140" x2="680" y2="140"/>
+            <line x1="660" y1="220" x2="680" y2="220"/><line x1="660" y1="300" x2="680" y2="300"/>
+          </g>
+          <rect x="680" y="30" width="40" height="300" rx="10" fill="#dfe3e8"/>
+          <text x="700" y="180" text-anchor="middle" class="t-head" font-size="16" fill="#1b1f24" transform="rotate(-90 700 180)">Windows</text>
+        </svg>
+
+        <div class="arch__text">
+          <h3>Одна команда — одно сообщение</h3>
+<pre class="code"><span class="c">// телефон → компьютер</span>
+{ <span class="k">"id"</span>: <span class="s">"7f3a…"</span>, <span class="k">"type"</span>: <span class="s">"mouse.click"</span>,
+  <span class="k">"payload"</span>: { <span class="k">"x"</span>: <span class="n">960</span>, <span class="k">"y"</span>: <span class="n">540</span>, <span class="k">"button"</span>: <span class="s">"left"</span> } }
+
+<span class="c">// компьютер → телефон</span>
+{ <span class="k">"id"</span>: <span class="s">"7f3a…"</span>, <span class="k">"ok"</span>: <span class="n">true</span>,
+  <span class="k">"data"</span>: { <span class="k">"clicked"</span>: <span class="n">true</span> } }</pre>
+          <p>Кадры экрана уменьшаются до нужной ширины и сжимаются в JPEG. Если на экране ничего не изменилось, кадр не отправляется — трафик на статичном экране падает в разы.</p>
+          <ul class="stack">
+            <li>Python 3.12</li><li>FastAPI</li><li>Uvicorn</li><li>WebSocket</li><li>JWT</li><li>mss</li><li>Pillow</li><li>pynput</li><li>psutil</li><li>pywin32</li><li>HTML, CSS, JavaScript</li><li>Flutter</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="security">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 class="section__title">Доступ к компьютеру только с вашего разрешения</h2>
+        <p class="section__lead">Пульт может всё, что может пользователь за клавиатурой. Поэтому каждое подключение начинается с действия на самом компьютере.</p>
+      </div>
+      <div class="security">
+        <div class="sec-item"><svg><use href="#i-home"/></svg><div><h3>Код создаётся только на ПК</h3><p>Запросы на новый код из сети и через туннель отклоняются. Подключиться можно, только если вы показали QR-код.</p></div></div>
+        <div class="sec-item"><svg><use href="#i-clock"/></svg><div><h3>Одноразовый код на 5 минут</h3><p>После привязки код сгорает. 31⁸ вариантов и не больше 20 попыток в минуту — подобрать его нельзя.</p></div></div>
+        <div class="sec-item"><svg><use href="#i-key"/></svg><div><h3>Подписанный токен</h3><p>Телефон получает токен JWT со сроком 90 дней. Секрет подписи хранится только на компьютере.</p></div></div>
+        <div class="sec-item"><svg><use href="#i-unplug"/></svg><div><h3>Отключение в один клик</h3><p>На странице «Подключить телефон» видно все устройства. Отключённый телефон сразу теряет доступ.</p></div></div>
+        <div class="sec-item"><svg><use href="#i-hand"/></svg><div><h3>Подтверждение опасных действий</h3><p>Выключение, удаление файлов и завершение процессов требуют подтверждения на телефоне.</p></div></div>
+        <div class="sec-item"><svg><use href="#i-shield"/></svg><div><h3>Защита от ошибок и перегрузки</h3><p>Лимит команд в секунду, таймаут для команд терминала, запрет вложенных сценариев.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0" id="remote">
+    <div class="wrap">
+      <div class="section__head">
+        <h2 class="section__title">Не только дома</h2>
+        <p class="section__lead">Сидите в колледже, а дома нужно поставить игру на скачивание или забрать файл? Включите доступ через интернет — открывать порты на роутере не нужно.</p>
+      </div>
+      <div class="remote">
+        <div class="remote__card">
+          <span class="tag">Одна кнопка</span>
+          <h3>Cloudflare Tunnel</h3>
+          <p>Кнопка «Включить» на странице подключения. Агент сам скачает cloudflared и выдаст адрес https://….trycloudflare.com. Аккаунт не нужен, на телефон ничего ставить не нужно.</p>
+          <p>Адрес меняется при перезапуске агента — перед уходом отсканируйте свежий QR.</p>
+        </div>
+        <div class="remote__card">
+          <span class="tag">Постоянный адрес</span>
+          <h3>Tailscale</h3>
+          <p>Частная сеть между вашими устройствами на базе WireGuard. Поставьте Tailscale на ПК и телефон, войдите в один аккаунт — адрес 100.x.x.x не меняется.</p>
+          <code>winget install Tailscale.Tailscale</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="final">
+      <div>
+        <h2>Попробуйте прямо сейчас</h2>
+        <p>Откройте страницу подключения на этом компьютере и наведите камеру телефона на QR-код.</p>
+      </div>
+      <a class="key key--input" href="/connect">Подключить телефон</a>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap footer">
+  <span>mobpc 1.2, открытый проект под лицензией MIT</span>
+  <a href="/docs">Документация API</a>
+  <a href="/app">Пульт</a>
+</footer>
+
+<script src="/assets/landing.js"></script>
+</body>
+</html>

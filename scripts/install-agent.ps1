@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Установка mobpc агента с автозапуском через Планировщик заданий Windows.

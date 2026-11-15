@@ -149,12 +149,20 @@ class MediaExecutor:
     def pause(self, _payload: dict[str, Any]) -> dict[str, Any]:
         return self._send_media_key(0xB3)
 
+    def next_track(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        return self._send_media_key(0xB0)  # VK_MEDIA_NEXT_TRACK
+
+    def prev_track(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        return self._send_media_key(0xB1)  # VK_MEDIA_PREV_TRACK
+
     def volume(self, payload: dict[str, Any]) -> dict[str, Any]:
         level = payload.get("level")
         if level == "mute":
             return self._send_media_key(0xAD)
         if level == "unmute":
             return self._send_media_key(0xAD)
+        if isinstance(level, str) and level.lstrip("-").isdigit():
+            level = int(level)
         if isinstance(level, int):
             vk = 0xAF if level > 0 else 0xAE  # volume up / down
             for _ in range(abs(level)):

@@ -1,83 +1,145 @@
+"""Захват и трансляция экрана.
+
+Захват идёт в отдельных потоках (не блокирует event loop), кадр уменьшается
+до max_width и не отправляется повторно, если экран не изменился.
+"""
+
 import asyncio
 import base64
+import hashlib
 import io
 import logging
-from typing import Any, Optional
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Awaitable, Callable, Optional
 
 import mss
 from PIL import Image
 
+from server.config import settings
+
 logger = logging.getLogger(__name__)
 
+_capture_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="capture")
+_local = threading.local()
+_KEYFRAME_INTERVAL = 2.0  # даже на статичном экране шлём кадр раз в 2 секунды
 
-class ScreenStreamer:
-    def __init__(self) -> None:
-        self._task: Optional[asyncio.Task] = None
-        self._running = False
-        self._fps = 10
-        self._quality = 50
-        self._client_id: Optional[str] = None
-        self._send_event = None
+EventSender = Callable[[dict[str, Any]], Awaitable[None]]
 
-    @property
-    def is_running(self) -> bool:
-        return self._running
 
-    async def start(
-        self,
-        payload: dict[str, Any],
-        client_id: str,
-        send_event,
-    ) -> dict[str, Any]:
-        await self.stop()
-        self._fps = int(payload.get("fps", 10))
-        self._quality = int(payload.get("quality", 50))
-        self._client_id = client_id
-        self._send_event = send_event
-        self._running = True
-        self._task = asyncio.create_task(self._loop())
-        return {"streaming": True, "fps": self._fps}
+def _sct() -> "mss.base.MSSBase":
+    # mss на Windows привязан к потоку, поэтому у каждого потока свой экземпляр.
+    sct = getattr(_local, "sct", None)
+    if sct is None:
+        sct = mss.mss()
+        _local.sct = sct
+    return sct
 
-    async def stop(self) -> dict[str, Any]:
-        self._running = False
-        if self._task:
-            self._task.cancel()
+
+def grab_frame(monitor: int = 0, quality: int = 60, max_width: int = 1280) -> dict[str, Any]:
+    """Снимок экрана в JPEG. width/height — реальный размер монитора (для координат мыши)."""
+    sct = _sct()
+    monitors = sct.monitors
+    idx = monitor if 1 <= monitor < len(monitors) else (1 if len(monitors) > 1 else 0)
+    mon = monitors[idx]
+    shot = sct.grab(mon)
+    img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+    if max_width and img.width > max_width:
+        img = img.resize((max_width, round(img.height * max_width / img.width)), Image.BILINEAR)
+    digest = hashlib.blake2b(img.tobytes(), digest_size=12).digest()
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=max(10, min(95, quality)))
+    return {
+        "image": base64.b64encode(buf.getvalue()).decode("ascii"),
+        "width": shot.width,
+        "height": shot.height,
+        "left": mon["left"],
+        "top": mon["top"],
+        "img_width": img.width,
+        "img_height": img.height,
+        "monitor": idx,
+        "monitors": len(monitors) - 1,
+        "_digest": digest,
+    }
+
+
+async def grab_frame_async(**kwargs: Any) -> dict[str, Any]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_capture_pool, lambda: grab_frame(**kwargs))
+
+
+class ScreenStream:
+    def __init__(self, send_event: EventSender, payload: dict[str, Any]) -> None:
+        self.send_event = send_event
+        self.fps = max(1, min(30, int(payload.get("fps", 10))))
+        self.quality = int(payload.get("quality", settings.screen_default_quality))
+        self.max_width = int(payload.get("max_width", settings.screen_max_width))
+        self.monitor = int(payload.get("monitor", 0))
+        self.frames_sent = 0
+        self.task: Optional[asyncio.Task] = None
+
+    def start(self) -> None:
+        self.task = asyncio.create_task(self._loop())
+
+    async def stop(self) -> None:
+        if self.task:
+            self.task.cancel()
             try:
-                await self._task
+                await self.task
             except asyncio.CancelledError:
                 pass
-            self._task = None
-        return {"streaming": False}
-
-    async def handle(self, payload: dict[str, Any], client_id: str, send_event) -> dict[str, Any]:
-        action = payload.get("action", "start")
-        if action == "stop":
-            return await self.stop()
-        return await self.start(payload, client_id, send_event)
+            self.task = None
 
     async def _loop(self) -> None:
-        interval = 1.0 / max(self._fps, 1)
-        with mss.mss() as sct:
-            monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
-            while self._running:
-                try:
-                    shot = sct.grab(monitor)
-                    img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG", quality=self._quality)
-                    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
-                    if self._send_event:
-                        await self._send_event({
-                            "type": "screen.stream",
-                            "data": {
-                                "image": encoded,
-                                "width": shot.width,
-                                "height": shot.height,
-                            },
-                        })
-                except Exception:
-                    logger.exception("Screen stream frame failed")
-                await asyncio.sleep(interval)
+        interval = 1.0 / self.fps
+        last_digest = None
+        last_sent = 0.0
+        while True:
+            started = time.monotonic()
+            try:
+                frame = await grab_frame_async(
+                    monitor=self.monitor, quality=self.quality, max_width=self.max_width
+                )
+                digest = frame.pop("_digest")
+                if digest != last_digest or started - last_sent > _KEYFRAME_INTERVAL:
+                    await self.send_event({"type": "screen.stream", "data": frame})
+                    last_digest, last_sent = digest, time.monotonic()
+                    self.frames_sent += 1
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Screen stream frame failed")
+                await asyncio.sleep(1.0)
+            await asyncio.sleep(max(0.0, interval - (time.monotonic() - started)))
 
 
-screen_streamer = ScreenStreamer()
+class StreamManager:
+    """Отдельный поток экрана на каждое WebSocket-подключение."""
+
+    def __init__(self) -> None:
+        self._streams: dict[str, ScreenStream] = {}
+
+    @property
+    def active(self) -> int:
+        return len(self._streams)
+
+    async def handle(self, conn_id: str, payload: dict[str, Any], send_event: Optional[EventSender]) -> dict[str, Any]:
+        action = payload.get("action", "start")
+        await self.stop(conn_id)
+        if action == "stop":
+            return {"streaming": False}
+        if send_event is None:
+            raise RuntimeError("screen.stream requires a live connection")
+        stream = ScreenStream(send_event, payload)
+        self._streams[conn_id] = stream
+        stream.start()
+        return {"streaming": True, "fps": stream.fps, "max_width": stream.max_width}
+
+    async def stop(self, conn_id: str) -> None:
+        stream = self._streams.pop(conn_id, None)
+        if stream:
+            await stream.stop()
+
+
+stream_manager = StreamManager()

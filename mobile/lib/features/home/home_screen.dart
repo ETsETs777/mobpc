@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -93,9 +91,8 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
     if (raw == null) return;
     _processing = true;
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
-      if (json['type'] != 'mobpc_pairing') throw Exception('Неверный QR');
-      final payload = PairingPayload.fromJson(json);
+      final payload = PairingPayload.tryParse(raw);
+      if (payload == null) throw Exception('Это не QR-код mobpc');
       final profile = await exchangePairingCode(
         host: payload.host,
         port: payload.port,

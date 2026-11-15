@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mobpc — подключить телефон</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body class="connect-page">
+<header class="nav">
+  <a class="brand" href="/"><span class="brand__mark" aria-hidden="true"></span>mobpc</a>
+  <span class="nav__status" id="agent-status"><span class="dot" aria-hidden="true"></span><span>Проверяем агент…</span></span>
+  <a class="nav__link" href="/">О проекте</a>
+</header>
+
+<main class="connect" id="connect-main">
+  <section class="connect__qr" aria-labelledby="qr-title">
+    <h1 id="qr-title" class="connect__title">Наведите камеру телефона на код</h1>
+    <div class="qr-card" id="qr-card">
+      <img id="qr-img" alt="QR-код для подключения телефона" width="320" height="320">
+      <div class="qr-card__done" id="qr-done" hidden>
+        <strong>Телефон подключён</strong>
+        <span id="qr-done-name"></span>
+      </div>
+    </div>
+    <div class="code-line">
+      <span class="code-line__label">Код для ручного ввода</span>
+      <strong class="code-line__code" id="code-text">····-····</strong>
+    </div>
+    <div class="timer" aria-live="polite">
+      <i class="timer__bar"><b id="timer-bar"></b></i>
+      <span id="timer-text">Код действует 5:00</span>
+    </div>
+    <button class="key key--screen" id="new-code">Новый код</button>
+  </section>
+
+  <section class="connect__side">
+    <ol class="steps-mini">
+      <li><span>Подключите телефон к той же сети Wi-Fi, что и этот компьютер.</span></li>
+      <li><span>Откройте камеру и наведите на QR-код. Телефон откроет пульт в браузере — устанавливать ничего не нужно.</span></li>
+      <li><span>Нет камеры? Откройте на телефоне адрес <code id="manual-url">…</code> и введите код.</span></li>
+    </ol>
+
+    <div class="block remote-box" id="remote-box">
+      <h2 class="block__title">Доступ через интернет</h2>
+      <p class="block__text">Чтобы управлять компьютером из колледжа, с работы или из поездки. Телефону не нужно быть в одной сети с ПК, а порты на роутере открывать не нужно.</p>
+      <div class="tunnel" id="tunnel">
+        <span class="dot" id="tunnel-dot" aria-hidden="true"></span>
+        <div class="tunnel__text"><strong id="tunnel-title">Cloudflare: выключен</strong><span id="tunnel-sub">Телефон подключается только из этой сети Wi-Fi.</span></div>
+        <button class="key key--term key--sm" id="tunnel-toggle">Включить</button>
+      </div>
+      <div class="tunnel tunnel--ts" id="ts-status">
+        <span class="dot" id="ts-dot" aria-hidden="true"></span>
+        <div class="tunnel__text"><strong id="ts-title">Tailscale</strong><span id="ts-sub">Проверяем…</span></div>
+      </div>
+      <label class="check-line"><input type="checkbox" id="keep-awake"> Не давать компьютеру засыпать, пока работает агент</label>
+      <p class="block__note">Два способа. Cloudflare — одна кнопка, ничего не нужно ставить на телефон, но адрес меняется при каждом перезапуске агента, а в некоторых сетях Cloudflare заблокирован. Tailscale — постоянный адрес и работает почти везде, но его нужно один раз установить на ПК и телефон. После включения выберите ниже сеть «Через интернет» или Tailscale и отсканируйте новый QR-код.</p>
+    </div>
+
+    <div class="block">
+      <h2 class="block__title">Сеть для подключения</h2>
+      <p class="block__text">Если у компьютера несколько сетей, выберите ту, к которой подключён телефон.</p>
+      <div class="nets" id="nets" role="radiogroup" aria-label="Сеть"></div>
+    </div>
+
+    <div class="block">
+      <h2 class="block__title">Подключённые устройства</h2>
+      <ul class="devices" id="devices"><li class="devices__empty">Пока ни одного телефона.</li></ul>
+    </div>
+
+    <details class="block help">
+      <summary>Телефон не открывает страницу?</summary>
+      <ul>
+        <li>Проверьте, что телефон и компьютер в одной сети. Мобильный интернет на телефоне не подойдёт.</li>
+        <li>При первом запуске Windows спрашивает, разрешить ли Python доступ к сети. Нужно разрешить для частных сетей.</li>
+        <li>В гостевых и школьных сетях устройства часто изолированы друг от друга. Тогда раздайте Wi-Fi с телефона и подключите к нему компьютер.</li>
+        <li>Для доступа через интернет используйте Tailscale: <code>scripts\setup-tunnel.ps1</code>.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<main class="connect-remote" id="remote-note" hidden>
+  <h1 class="connect__title">Эта страница работает только на самом компьютере</h1>
+  <p>Коды привязки можно создавать только с компьютера, на котором запущен агент. Это защита: никто из сети не сможет подключиться к ПК без вашего ведома.</p>
+  <a class="key key--screen" href="/app">Открыть пульт</a>
+</main>
+
+<script src="/assets/connect.js"></script>
+</body>
+</html>

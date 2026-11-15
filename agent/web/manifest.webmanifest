@@ -1,0 +1,13 @@
+{
+  "name": "mobpc — пульт для компьютера",
+  "short_name": "mobpc",
+  "start_url": "/app",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e2227",
+  "theme_color": "#1e2227",
+  "lang": "ru",
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
