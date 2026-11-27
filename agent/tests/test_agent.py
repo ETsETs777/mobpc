@@ -190,6 +190,27 @@ class FileTransferTests(unittest.TestCase):
 
 
 class ShellTests(unittest.TestCase):
+    def test_long_output_without_newlines_is_streamed(self):
+        command = f'& \'{sys.executable}\' -c "import sys;sys.stdout.buffer.write(b\'x\'*100000)"'
+        chunks = []
+        result = asyncio.run(exec_shell({'command': command}, lambda stream, text: chunks.append((stream, text))))
+        self.assertEqual(result['exit_code'], 0)
+        self.assertEqual(result['stdout'], 'x' * 100000)
+        self.assertEqual(''.join(text for stream, text in chunks if stream == 'stdout'), result['stdout'])
+
+    def test_unicode_character_split_between_chunks(self):
+        command = f'& \'{sys.executable}\' -c "import sys;sys.stdout.buffer.write(b\'x\'*4095+\'€\'.encode()+b\'end\')"'
+        result = asyncio.run(exec_shell({'command': command}))
+        self.assertEqual(result['stdout'], 'x' * 4095 + '€end')
+
+    def test_timeout_still_applies_after_output_pipes_close(self):
+        command = 'import os,time;os.close(1);os.close(2);time.sleep(20)'
+        started = time.monotonic()
+        with mock.patch.dict('executor.shell_files.SHELL_MAP', {'cmd': ([sys.executable, '-c'], '')}):
+            result = asyncio.run(exec_shell({'shell': 'cmd', 'command': command, 'timeout': .5}))
+        self.assertTrue(result['timed_out'])
+        self.assertLess(time.monotonic() - started, 5)
+
     def test_cyrillic_output(self):
         r = asyncio.run(exec_shell({"command": "Write-Output 'Привет, жюри'"}))
         self.assertEqual(r["exit_code"], 0)

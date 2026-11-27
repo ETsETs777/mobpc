@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import binascii
+import codecs
 import os
 import subprocess
 from pathlib import Path
@@ -67,27 +68,44 @@ async def exec_shell(
     stderr_parts: list[str] = []
 
     async def read_stream(stream, name: str, parts: list[str]) -> None:
-        while True:
-            chunk = await stream.readline()
-            if not chunk:
-                break
-            text = decode_output(chunk)
+        decoder = codecs.getincrementaldecoder("utf-8")()
+
+        def decode(chunk: bytes, final: bool = False) -> str:
+            nonlocal decoder
+            buffered = decoder.getstate()[0]
+            try:
+                return decoder.decode(chunk, final=final)
+            except UnicodeDecodeError:
+                decoder = codecs.getincrementaldecoder(_OEM)(errors="replace")
+                return decoder.decode(buffered + chunk, final=final)
+
+        async def emit(text: str) -> None:
+            if not text:
+                return
             parts.append(text)
             if on_stream:
                 result = on_stream(name, text)
                 if asyncio.iscoroutine(result):
                     await result
 
+        while True:
+            chunk = await stream.read(4096)
+            if not chunk:
+                break
+            await emit(decode(chunk))
+        await emit(decode(b"", final=True))
+
     timed_out = False
     try:
-        await asyncio.wait_for(
+        results = await asyncio.wait_for(
             asyncio.gather(
                 read_stream(proc.stdout, "stdout", stdout_parts),
                 read_stream(proc.stderr, "stderr", stderr_parts),
+                proc.wait(),
             ),
             timeout=timeout,
         )
-        exit_code = await proc.wait()
+        exit_code = results[-1]
     except asyncio.TimeoutError:
         timed_out = True
         exit_code = -1
