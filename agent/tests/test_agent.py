@@ -217,6 +217,20 @@ class DownloadTests(unittest.TestCase):
         self.assertNotEqual(Path(item.path).name, 'game-patch.bin')
         self.assertEqual(partial.read_bytes(), b'previous interrupted download')
 
+    def test_short_response_is_not_reported_as_complete(self):
+        folder = _TMP / 'truncated-download'
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.geturl.return_value = 'https://example.test/file.bin'
+        response.headers = {'Content-Length': '8'}
+        response.read.side_effect = [b'abc', b'']
+        with mock.patch('executor.downloads.urllib.request.urlopen', return_value=response):
+            result = download_manager.start({'url': 'https://example.test/file.bin', 'dir': str(folder)})
+            item = self._wait(result['id'])
+        self.assertEqual(item.status, 'error')
+        self.assertIn('3 из 8', item.error)
+        self.assertEqual(list(folder.iterdir()), [])
+
     def test_concurrent_downloads_keep_separate_contents(self):
         barrier = threading.Barrier(2)
         contents = {'https://example.test/a/file.bin': b'a' * 100,

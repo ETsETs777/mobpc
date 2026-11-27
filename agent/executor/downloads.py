@@ -78,9 +78,12 @@ class DownloadManager:
         try:
             req = urllib.request.Request(item.url, headers={"User-Agent": "Mozilla/5.0 (mobpc)"})
             with urllib.request.urlopen(req, timeout=30) as r:
+                content_length = r.headers.get("Content-Length")
+                item.total = int(content_length) if content_length is not None else 0
+                if item.total < 0:
+                    raise ValueError("Некорректный размер загружаемого файла")
                 target, part, output = _reserve(folder / _filename(r.geturl(), r.headers))
                 item.path = str(target)
-                item.total = int(r.headers.get("Content-Length") or 0)
                 item.status = "downloading"
                 window_start, window_bytes = time.time(), 0
                 with output as f:
@@ -99,6 +102,8 @@ class DownloadManager:
                 part.unlink(missing_ok=True)
                 item.status = "cancelled"
             else:
+                if content_length is not None and item.received != item.total:
+                    raise IOError(f"Неполная загрузка: получено {item.received} из {item.total} байт")
                 part.rename(target)
                 item.status = "done"
         except Exception as exc:
