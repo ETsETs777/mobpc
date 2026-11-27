@@ -64,7 +64,7 @@ class DownloadManager:
             raise ValueError("Нужна ссылка, начинающаяся с http:// или https://")
         folder = Path(payload.get("dir") or Path.home() / "Downloads").expanduser()
         folder.mkdir(parents=True, exist_ok=True)
-        item = Download(id=uuid.uuid4().hex[:12], url=url, path=str(folder))
+        item = Download(id=uuid.uuid4().hex[:12], url=url, path=str(folder / _filename(url, {})))
         self.items[item.id] = item
         threading.Thread(target=self._run, args=(item, folder), daemon=True, name=f"dl-{item.id}").start()
         return item.public()

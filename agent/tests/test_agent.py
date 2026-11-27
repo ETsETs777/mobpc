@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -198,6 +199,12 @@ class DownloadTests(unittest.TestCase):
         a = self._wait(download_manager.start({"url": self.url, "dir": str(self.dest)})["id"])
         b = self._wait(download_manager.start({"url": self.url, "dir": str(self.dest)})["id"])
         self.assertNotEqual(a.path, b.path)
+
+    def test_name_known_before_response(self):
+        with mock.patch('executor.downloads.threading.Thread.start'):
+            result = download_manager.start({'url': self.url, 'dir': str(self.dest)})
+        self.assertEqual(result['name'], 'game-patch.bin')
+        download_manager.items.pop(result['id'])
 
     def test_rejects_non_http(self):
         with self.assertRaises(ValueError):
