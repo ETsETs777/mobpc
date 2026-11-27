@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import binascii
 import os
 import subprocess
 from pathlib import Path
@@ -147,6 +148,8 @@ class FileExecutor:
         path = Path(payload["path"])
         offset = int(payload.get("offset", 0))
         length = int(payload.get("length", 65536))
+        if offset < 0 or not 0 <= length <= settings.max_ws_file_bytes:
+            raise ValueError("Недопустимый диапазон чтения файла")
         if not path.is_file():
             raise FileNotFoundError(str(path))
         size = path.stat().st_size
@@ -162,7 +165,17 @@ class FileExecutor:
 
     def write_file(self, payload: dict[str, Any]) -> dict[str, Any]:
         path = Path(payload["path"])
-        data = base64.b64decode(payload["data"])
+        encoded = payload["data"]
+        if not isinstance(encoded, str):
+            raise ValueError("Данные файла должны быть строкой Base64")
+        if len(encoded) > 4 * ((settings.max_ws_file_bytes + 2) // 3):
+            raise ValueError("Файл слишком большой для WebSocket")
+        try:
+            data = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("Некорректные данные Base64") from exc
+        if len(data) > settings.max_ws_file_bytes:
+            raise ValueError("Файл слишком большой для WebSocket")
         append = payload.get("append", False)
         path.parent.mkdir(parents=True, exist_ok=True)
         mode = "ab" if append else "wb"

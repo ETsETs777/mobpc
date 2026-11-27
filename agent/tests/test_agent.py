@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import base64
 import json
 import os
 import shutil
@@ -28,7 +29,7 @@ os.environ["MOBPC_LOGS_DIR"] = str(_TMP / "logs")
 
 from auth.pairing import TooManyAttempts, auth_manager, normalize_code  # noqa: E402
 from executor.dispatcher import dispatcher  # noqa: E402
-from executor.shell_files import exec_shell  # noqa: E402
+from executor.shell_files import exec_shell, file_executor  # noqa: E402
 from server import network  # noqa: E402
 from executor.downloads import DownloadManager, download_manager, _filename  # noqa: E402
 from executor.input import _resolve_shortcut_key  # noqa: E402
@@ -163,6 +164,29 @@ class DispatcherTests(unittest.TestCase):
     def test_file_list_drives(self):
         r = asyncio.run(dispatcher.dispatch("file.list", {"path": "::drives"}, "test"))
         self.assertTrue(all(e["drive"] for e in r["entries"]))
+
+
+class FileTransferTests(unittest.TestCase):
+    def test_reads_cannot_bypass_the_size_limit(self):
+        path = _TMP / 'read-range.bin'
+        path.write_bytes(b'abcdef')
+        with mock.patch.object(settings, 'max_ws_file_bytes', 4):
+            for extra in ({'length': -1}, {'offset': -1}, {'length': 5}):
+                with self.subTest(extra=extra), self.assertRaises(ValueError):
+                    file_executor.read_file({'path': str(path), **extra})
+            result = file_executor.read_file({'path': str(path), 'offset': 1, 'length': 4})
+        self.assertEqual(base64.b64decode(result['data']), b'bcde')
+
+    def test_invalid_uploads_preserve_the_existing_file(self):
+        path = _TMP / 'existing-upload.bin'
+        path.write_bytes(b'original')
+        with mock.patch.object(settings, 'max_ws_file_bytes', 4):
+            for value in ('@@@', base64.b64encode(b'12345').decode(), 123):
+                with self.subTest(value=value), self.assertRaises(ValueError):
+                    file_executor.write_file({'path': str(path), 'data': value})
+                self.assertEqual(path.read_bytes(), b'original')
+            file_executor.write_file({'path': str(path), 'data': base64.b64encode(b'new').decode()})
+        self.assertEqual(path.read_bytes(), b'new')
 
 
 class ShellTests(unittest.TestCase):
