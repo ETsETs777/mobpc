@@ -16,7 +16,9 @@ def load() -> dict[str, Any]:
         data = json.loads(_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         data = {}
-    return {**_DEFAULTS, **{k: v for k, v in data.items() if k in _DEFAULTS}}
+    if not isinstance(data, dict):
+        data = {}
+    return {**_DEFAULTS, **{k: v for k, v in data.items() if k in _DEFAULTS and type(v) is bool}}
 
 
 def get(key: str) -> Any:
@@ -24,6 +26,8 @@ def get(key: str) -> Any:
 
 
 def set_value(key: str, value: Any) -> None:
+    if key not in _DEFAULTS or type(value) is not bool:
+        raise ValueError("Настройка должна быть известным логическим параметром")
     with _lock:
         data = load()
         data[key] = value

@@ -35,6 +35,7 @@ from executor.input import _resolve_shortcut_key  # noqa: E402
 from server.app import _app_url, create_app, is_local_request  # noqa: E402
 from server.tunnel import keep_awake, tunnel_manager  # noqa: E402
 from server.config import settings  # noqa: E402
+from server import prefs  # noqa: E402
 
 
 def tearDownModule() -> None:
@@ -89,6 +90,28 @@ class PairingTests(unittest.TestCase):
 
     def test_normalize(self):
         self.assertEqual(normalize_code(" ab cd-ef9h "), "ABCDEF9H")
+
+
+class PreferenceTests(unittest.TestCase):
+    def test_valid_json_with_wrong_shape_uses_defaults(self):
+        path = _TMP / 'invalid-prefs.json'
+        with mock.patch.object(prefs, '_PATH', path):
+            for value in (None, [], True, 'settings'):
+                with self.subTest(value=value):
+                    path.write_text(json.dumps(value), encoding='utf-8')
+                    self.assertEqual(prefs.load(), {'keep_awake': False, 'tunnel': False})
+
+    def test_non_boolean_values_do_not_enable_features(self):
+        path = _TMP / 'typed-prefs.json'
+        path.write_text(json.dumps({'keep_awake': 'false', 'tunnel': True, 'unknown': True}), encoding='utf-8')
+        with mock.patch.object(prefs, '_PATH', path):
+            self.assertEqual(prefs.load(), {'keep_awake': False, 'tunnel': True})
+            with self.assertRaises(ValueError):
+                prefs.set_value('keep_awake', 'false')
+            with self.assertRaises(ValueError):
+                prefs.set_value('unknown', True)
+            prefs.set_value('keep_awake', True)
+            self.assertTrue(prefs.get('keep_awake'))
 
 
 class LocalRequestTests(unittest.TestCase):
