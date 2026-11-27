@@ -128,11 +128,15 @@ class AuthManager:
             if not session or session.used or now > session.expires_at:
                 self._register_fail()
                 return None
-            session.used = True
-            session.device_name = name
             device = Device(id=uuid.uuid4().hex, name=name, paired_at=now, last_seen=now)
             self.devices[device.id] = device
-            self._save_devices()
+            try:
+                self._save_devices()
+            except Exception:
+                self.devices.pop(device.id, None)
+                raise
+            session.used = True
+            session.device_name = name
         return self.create_token(device), device
 
     # ---------- токены ----------
@@ -167,7 +171,11 @@ class AuthManager:
         with self._lock:
             removed = self.devices.pop(device_id, None)
             if removed:
-                self._save_devices()
+                try:
+                    self._save_devices()
+                except Exception:
+                    self.devices[device_id] = removed
+                    raise
         return removed is not None
 
     def list_devices(self) -> list[Device]:

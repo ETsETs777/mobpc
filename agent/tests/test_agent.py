@@ -92,6 +92,31 @@ class PairingTests(unittest.TestCase):
     def test_normalize(self):
         self.assertEqual(normalize_code(" ab cd-ef9h "), "ABCDEF9H")
 
+    def test_failed_device_save_does_not_consume_pairing_code(self):
+        session = auth_manager.create_pairing_code()
+        before = set(auth_manager.devices)
+        with mock.patch.object(auth_manager, '_save_devices', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                auth_manager.exchange_pairing_code(session.code, 'phone')
+        self.assertFalse(session.used)
+        self.assertIsNone(session.device_name)
+        self.assertEqual(set(auth_manager.devices), before)
+        token, device = auth_manager.exchange_pairing_code(session.code, 'phone')
+        self.assertEqual(auth_manager.verify_token(token).id, device.id)
+        auth_manager.revoke(device.id)
+
+    def test_failed_revocation_keeps_memory_and_disk_consistent(self):
+        session = auth_manager.create_pairing_code()
+        token, device = auth_manager.exchange_pairing_code(session.code, 'phone')
+        with mock.patch.object(auth_manager, '_save_devices', side_effect=OSError('file locked')):
+            with self.assertRaises(OSError):
+                auth_manager.revoke(device.id)
+        self.assertEqual(auth_manager.verify_token(token).id, device.id)
+        saved = json.loads(auth_manager._devices_path.read_text(encoding='utf-8'))
+        self.assertIn(device.id, [entry['id'] for entry in saved])
+        self.assertTrue(auth_manager.revoke(device.id))
+        self.assertIsNone(auth_manager.verify_token(token))
+
 
 class PreferenceTests(unittest.TestCase):
     def test_valid_json_with_wrong_shape_uses_defaults(self):
