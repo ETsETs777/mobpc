@@ -33,6 +33,7 @@ from executor.shell_files import exec_shell, file_executor  # noqa: E402
 from server import network  # noqa: E402
 from executor.downloads import DownloadManager, download_manager, _filename  # noqa: E402
 from executor.input import _resolve_shortcut_key  # noqa: E402
+from executor.macros import macro_runner  # noqa: E402
 from server.app import _app_url, create_app, is_local_request  # noqa: E402
 from server.tunnel import keep_awake, tunnel_manager  # noqa: E402
 from server.config import settings  # noqa: E402
@@ -189,6 +190,28 @@ class DispatcherTests(unittest.TestCase):
     def test_file_list_drives(self):
         r = asyncio.run(dispatcher.dispatch("file.list", {"path": "::drives"}, "test"))
         self.assertTrue(all(e["drive"] for e in r["entries"]))
+
+
+class MacroTests(unittest.TestCase):
+    def test_all_steps_are_validated_before_any_action(self):
+        steps = [{'type': 'system.ping'}, {'type': 'system.ping', 'delay': 'not a number'}]
+        with mock.patch.object(dispatcher, 'dispatch', new_callable=mock.AsyncMock) as dispatch:
+            with self.assertRaises(ValueError):
+                asyncio.run(macro_runner.run({'steps': steps}))
+            dispatch.assert_not_awaited()
+
+    def test_invalid_shapes_and_delays_are_rejected(self):
+        for steps in (None, 'steps', [None], [{'type': []}], [{'type': 'system.ping', 'payload': []}],
+                      [{'type': 'system.ping', 'delay': float('nan')}],
+                      [{'type': 'system.ping', 'delay': -1}], [{'type': 'system.ping'}] * 101):
+            with self.subTest(steps=steps), self.assertRaises(ValueError):
+                asyncio.run(macro_runner.run({'steps': steps}))
+
+    def test_valid_steps_keep_their_order(self):
+        with mock.patch.object(dispatcher, 'dispatch', new_callable=mock.AsyncMock, return_value={'done': True}) as dispatch:
+            result = asyncio.run(macro_runner.run({'steps': [{'type': 'first'}, {'type': 'second', 'payload': {'value': 1}}]}))
+        self.assertEqual(result['steps_run'], 2)
+        self.assertEqual([call.args[0] for call in dispatch.await_args_list], ['first', 'second'])
 
 
 class FileTransferTests(unittest.TestCase):
