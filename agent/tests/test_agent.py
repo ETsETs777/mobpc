@@ -30,7 +30,7 @@ from auth.pairing import TooManyAttempts, auth_manager, normalize_code  # noqa: 
 from executor.dispatcher import dispatcher  # noqa: E402
 from executor.shell_files import exec_shell  # noqa: E402
 from server import network  # noqa: E402
-from executor.downloads import download_manager  # noqa: E402
+from executor.downloads import DownloadManager, download_manager  # noqa: E402
 from executor.input import _resolve_shortcut_key  # noqa: E402
 from server.app import _app_url, create_app, is_local_request  # noqa: E402
 from server.tunnel import keep_awake, tunnel_manager  # noqa: E402
@@ -205,6 +205,58 @@ class DownloadTests(unittest.TestCase):
             result = download_manager.start({'url': self.url, 'dir': str(self.dest)})
         self.assertEqual(result['name'], 'game-patch.bin')
         download_manager.items.pop(result['id'])
+
+    def test_existing_partial_file_is_preserved(self):
+        folder = _TMP / 'partial-download'
+        folder.mkdir()
+        partial = folder / 'game-patch.bin.part'
+        partial.write_bytes(b'previous interrupted download')
+        result = download_manager.start({'url': self.url, 'dir': str(folder)})
+        item = self._wait(result['id'])
+        self.assertEqual(item.status, 'done', item.error)
+        self.assertNotEqual(Path(item.path).name, 'game-patch.bin')
+        self.assertEqual(partial.read_bytes(), b'previous interrupted download')
+
+    def test_concurrent_downloads_keep_separate_contents(self):
+        barrier = threading.Barrier(2)
+        contents = {'https://example.test/a/file.bin': b'a' * 100,
+                    'https://example.test/b/file.bin': b'b' * 100}
+
+        class Response:
+            headers = {'Content-Length': '100'}
+
+            def __init__(self, url):
+                self.url, self.sent = url, False
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def geturl(self):
+                return self.url
+
+            def read(self, length):
+                if self.sent:
+                    return b''
+                self.sent = True
+                barrier.wait(timeout=5)
+                return contents[self.url]
+
+        manager = DownloadManager()
+        folder = _TMP / 'concurrent-downloads'
+        with mock.patch('executor.downloads.urllib.request.urlopen', side_effect=lambda request, **kw: Response(request.full_url)):
+            items = [manager.start({'url': url, 'dir': str(folder)}) for url in contents]
+            for item in items:
+                for _ in range(100):
+                    download = manager.items[item['id']]
+                    if download.finished is not None:
+                        break
+                    time.sleep(.05)
+                self.assertEqual(download.status, 'done', download.error)
+                self.assertEqual(Path(download.path).read_bytes(), contents[download.url])
+        self.assertNotEqual(*(manager.items[item['id']].path for item in items))
 
     def test_rejects_non_http(self):
         with self.assertRaises(ValueError):

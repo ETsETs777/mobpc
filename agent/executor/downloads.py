@@ -8,7 +8,7 @@ import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, BinaryIO, Optional
 
 _CHUNK = 256 * 1024
 _BAD_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -44,13 +44,17 @@ def _filename(url: str, headers) -> str:
     return name or "download"
 
 
-def _unique(path: Path) -> Path:
-    if not path.exists():
-        return path
-    for i in range(1, 1000):
-        candidate = path.with_name(f"{path.stem} ({i}){path.suffix}")
-        if not candidate.exists():
-            return candidate
+def _reserve(path: Path) -> tuple[Path, Path, BinaryIO]:
+    for i in range(1000):
+        candidate = path if i == 0 else path.with_name(f"{path.stem} ({i}){path.suffix}")
+        if candidate.exists():
+            continue
+        part = candidate.with_name(candidate.name + ".part")
+        try:
+            output = part.open("xb")
+        except FileExistsError:
+            continue
+        return candidate, part, output
     raise FileExistsError(str(path))
 
 
@@ -74,13 +78,12 @@ class DownloadManager:
         try:
             req = urllib.request.Request(item.url, headers={"User-Agent": "Mozilla/5.0 (mobpc)"})
             with urllib.request.urlopen(req, timeout=30) as r:
-                target = _unique(folder / _filename(r.geturl(), r.headers))
+                target, part, output = _reserve(folder / _filename(r.geturl(), r.headers))
                 item.path = str(target)
                 item.total = int(r.headers.get("Content-Length") or 0)
                 item.status = "downloading"
-                part = target.with_name(target.name + ".part")
                 window_start, window_bytes = time.time(), 0
-                with open(part, "wb") as f:
+                with output as f:
                     while not item.cancel.is_set():
                         chunk = r.read(_CHUNK)
                         if not chunk:
@@ -96,7 +99,7 @@ class DownloadManager:
                 part.unlink(missing_ok=True)
                 item.status = "cancelled"
             else:
-                part.replace(target)
+                part.rename(target)
                 item.status = "done"
         except Exception as exc:
             if part:
