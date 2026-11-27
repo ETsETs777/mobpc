@@ -415,10 +415,19 @@ def create_app() -> FastAPI:
                     await conn.send({"id": None, "ok": False, "data": None, "error": "Invalid JSON"})
                     continue
                 if not isinstance(msg, dict):
+                    await conn.send({"id": None, "ok": False, "data": None, "error": "Command must be a JSON object"})
                     continue
                 msg_id = msg.get("id")
-                cmd_type = msg.get("type") or ""
-                payload = msg.get("payload") or {}
+                cmd_type = msg.get("type")
+                payload = msg.get("payload", {})
+                if payload is None:
+                    payload = {}
+                if not isinstance(cmd_type, str) or not cmd_type.strip():
+                    await conn.send({"id": msg_id, "ok": False, "data": None, "error": "Command type must be a non-empty string"})
+                    continue
+                if not isinstance(payload, dict):
+                    await conn.send({"id": msg_id, "ok": False, "data": None, "error": "Command payload must be a JSON object"})
+                    continue
                 if cmd_type in _CONCURRENT:
                     task = asyncio.create_task(run_command(msg_id, cmd_type, payload))
                     conn.tasks.add(task)

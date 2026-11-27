@@ -505,6 +505,32 @@ class ServerIntegrationTests(unittest.TestCase):
 
         asyncio.run(talk())
 
+    def test_invalid_commands_do_not_disconnect_the_client(self):
+        import websockets
+
+        auth_manager._fails.clear()
+        session = auth_manager.create_pairing_code()
+        token, device = auth_manager.exchange_pairing_code(session.code, 'protocol-test')
+
+        async def talk():
+            async with websockets.connect(f'ws://127.0.0.1:{self.port}/ws?token={token}') as ws:
+                await asyncio.wait_for(ws.recv(), 2)
+                for message in ([], {'id': 'bad-type', 'type': []},
+                                {'id': 'bad-payload', 'type': 'system.ping', 'payload': [1]}):
+                    await ws.send(json.dumps(message))
+                    reply = json.loads(await asyncio.wait_for(ws.recv(), 2))
+                    self.assertFalse(reply['ok'])
+                    self.assertTrue(reply['error'])
+                await ws.send(json.dumps({'id': 'still-connected', 'type': 'system.ping', 'payload': {}}))
+                reply = json.loads(await asyncio.wait_for(ws.recv(), 2))
+                self.assertEqual(reply['id'], 'still-connected')
+                self.assertTrue(reply['data']['pong'])
+
+        try:
+            asyncio.run(talk())
+        finally:
+            auth_manager.revoke(device.id)
+
 
 if __name__ == "__main__":
     unittest.main()
