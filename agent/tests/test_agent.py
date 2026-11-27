@@ -30,7 +30,7 @@ from auth.pairing import TooManyAttempts, auth_manager, normalize_code  # noqa: 
 from executor.dispatcher import dispatcher  # noqa: E402
 from executor.shell_files import exec_shell  # noqa: E402
 from server import network  # noqa: E402
-from executor.downloads import DownloadManager, download_manager  # noqa: E402
+from executor.downloads import DownloadManager, download_manager, _filename  # noqa: E402
 from executor.input import _resolve_shortcut_key  # noqa: E402
 from server.app import _app_url, create_app, is_local_request  # noqa: E402
 from server.tunnel import keep_awake, tunnel_manager  # noqa: E402
@@ -230,6 +230,13 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(item.status, 'error')
         self.assertIn('3 из 8', item.error)
         self.assertEqual(list(folder.iterdir()), [])
+
+    def test_windows_device_name_is_saved_as_a_regular_file(self):
+        name = _filename('https://example.test/NUL.txt', {})
+        path = _TMP / name
+        path.write_bytes(b'downloaded content')
+        self.assertTrue(path.is_file())
+        self.assertEqual(path.read_bytes(), b'downloaded content')
 
     def test_concurrent_downloads_keep_separate_contents(self):
         barrier = threading.Barrier(2)

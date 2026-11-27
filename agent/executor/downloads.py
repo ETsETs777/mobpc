@@ -12,6 +12,9 @@ from typing import Any, BinaryIO, Optional
 
 _CHUNK = 256 * 1024
 _BAD_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+_RESERVED_NAMES = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"} | {
+    f"{prefix}{number}" for prefix in ("COM", "LPT") for number in "123456789¹²³"
+}
 
 
 @dataclass
@@ -41,6 +44,8 @@ def _filename(url: str, headers) -> str:
     m = re.search(r"filename\*=UTF-8''([^;]+)", cd, re.I) or re.search(r'filename="?([^";]+)"?', cd, re.I)
     name = urllib.parse.unquote(m.group(1)) if m else urllib.parse.unquote(Path(urllib.parse.urlparse(url).path).name)
     name = _BAD_CHARS.sub("_", name).strip(" .")
+    if name.partition(".")[0].rstrip(" .").upper() in _RESERVED_NAMES:
+        name = "_" + name
     return name or "download"
 
 
